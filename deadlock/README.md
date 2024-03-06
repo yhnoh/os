@@ -84,15 +84,61 @@ public class DeadlockTest {
 ### 데이터베이스에서 발생하는 데드락
 
 - 데이터베이스는 많은 어플리케이션이 커넥션을 맺어 자원에 접근하여 데이터를 읽거나 쓸 수 있다. 때문에 데이터베이스는 동시성 이슈를 해결하기 위하여 락을 제공하고 있으며 데드락이 발생할 수 있다.
-> 트랜잭션의 isolation level은 하나의 트랜잭션 단위에서 어떻게 데이터의 정합성을 맞추
+- 데드락을 이해하기전에 데이터베이스에 어떠한 락을 이용하여 동시성을 제어하는지부터 한번 알아보자.
 
 #### 데이터베이스 락
-- 데이터베이스에는 크게 2가지의 락이 존재한다.
-  - Shared Lock(공유락)
-    - 다른 트랜잭션에서 Shared Lock은 허용하지만 Exclusive Lock은 허용하지 않는다.
-  - Exclusive Lock(베타락)
-    - 다른 트랜잭션에서 Shared Lock, Exclusive Lock을 허용하지 않는다.
+- 데이터베이스에는 크게 두가지의 락을 이용하여 동시성 이슈를 해결한다.
+![](./img/database_lock.png)
+1. Shared Lock(공유락)
+   - 레코드에 Shared Lock을 걸게되면 읽기 잠금을 획득하여 다른 트랜잭션에서 레코드를 변경할 수는 없지만 읽을 수 는 있다.
+   - 즉. 다른 트랜잭션에서 Shared Lock은 허용할 수 있지만 Exclusive Lock은 허용하지 않는다.
+   - Exclusive Lock을 획득하기 위해서는 Shared Lock이 헤제되어야 획득할 수 있다.
+    ```sql
+    ------------ transaction1 ------------
+    start transaction;
+
+    -- Shared Lock 획득
+    select * from lock_test where col1 = 'value1' lock in share mode;
+
+    do sleep(10);
+
+    commit;
+
+    ------------ transaction2 ------------
+    start transaction;
+
+    -- transaction1이 Shared Lock을 획득하였지만, transaction2에서도 Shared Lock 획득 가능
+    select * from lock_test where col1 = 'value1' lock in share mode;
+    -- transaction1이 Shared Lock을 획득하여서, transaction2에서 Exclusive Lock 획득 불가, transaction1이 종료될때까지 기다림
+    update lock_test set col1 = 'value3' where col1 = 'value1';
+
+    commit;    
+    ```
+2. Exclusive Lock(베타락)
+   - 레코드에 Exclusive Lock을 걸면 쓰기 잠금을 획득하며 다른 트랜잭션에서 레코드를 읽을 수도 변경할 수도 없다. 
+   - 즉, 다른 트랜잭션에서 Shared Lock, Exclusive Lock을 허용하지 않는다.
+   - Exclusive Lock, Shared Lock을 획득하기 위해서는 Exclusive Lock이 헤제되어야 획득할 수 있다.
+    ```sql
+    ------------ transaction1 ------------
+    start transaction;
+
+    -- Exclusive Lock 획득
+    update lock_test set col1 = 'value3' where col1 = 'value1';
+
+    do sleep(10);
+
+    commit;
+
+    ------------ transaction2 ------------
+    start transaction;
+
+    -- transaction1이 Exclusive Lock을 획득하여서, transaction1 종료될때까지 기다림
+    select * from lock_test where col1 = 'value1' lock in share mode;
+    update lock_test set col1 = 'value3' where col1 = 'value2';
+
+    commit;
+    ```
 
 
-
+> https://hstory0208.tistory.com/entry/%EB%9D%BDLock%EC%9D%B4%EB%9E%80-Lock%EC%9D%98-%EC%A2%85%EB%A5%98%EC%99%80-%EA%B5%90%EC%B0%A9%EC%83%81%ED%83%9CDeadLock
 > https://ko.wikipedia.org/wiki/%EA%B5%90%EC%B0%A9_%EC%83%81%ED%83%9C?source=post_page-----8100261a66c3--------------------------------
