@@ -133,10 +133,70 @@ public class DeadlockTest {
 
 #### 2.2.1. 데이터베이스에서 데드락 발생 조건
 
-![](./img/database_deadlock.png)
-- 락에 대해서 설명을 했듯이 Shared Lock을 획득하면 Exclusive Lock은 Shared Lock이 해제되기 전까지 기다려야한다. 문제는 Shared Lock은 다른 트랜재션에서도 획득이 가능하다는 것이다.
-- 때문에 위의 그림과 같이 Exclusive Lock을 획득하기 위하여 Shared Lock이 해제되기를 기다리기만 하는 데드락 현상이 발생한다.  
+1. Shared Lock을 통한 데드락 발생
+![](img/database_sharedlock_deadlock.png)
+   - Shared Lock을 획득하면 Exclusive Lock은 Shared Lock이 해제되기 전까지 기다려야한다. 문제는 Shared Lock은 다른 트랜잭션에서도 획득이 가능하다는 것이다.
+   - 때문에 위의 그림과 같이 Exclusive Lock을 획득하기 위하여 Shared Lock이 해제되기를 기다리기만 하는 데드락이 발생한다.
+    ```sql
+    -- transaction1
+    start transaction;
 
+    -- Shared Lock 획득
+    select * from lock_test where col1 = 'value1' lock in share mode;
+
+    do sleep(10);
+
+    -- trasaction2가 lock_test에 대한 Shared Lock 획득했기 때문에 대기
+    update lock_test set col1 = 'value3' where col1 = 'value1';
+
+    commit;
+
+    -- transaction2
+    start transaction;
+
+    -- Shared Lock 획득
+    select * from lock_test where col1 = 'value1' lock in share mode;
+
+    do sleep(10);
+
+    -- trasaction1이 lock_test에 대한 Shared Lock 획득했기 때문에 대기
+    update lock_test set col1 = 'value3' where col1 = 'value1';
+
+    commit;
+    ```
+
+2. Exclusive Lock을 통한 데드락 발생
+![](img/database_exclusivelock_deadlock.png)
+   - Exclusive Lock을 획득하면 Exclusive Lock, Shared Lock은 Exclusive Lock이 해제되기 전까지 기다려야한다.
+   - 위의 그림에서 transaction1은 lock_test, transaction2는 lock_test2에 락을 걸고 다시 transaction1은 lock_test2, transaction2는 lock_test에 락을 획득하려 한다.
+   - 서로 동일한 자원에 대해서 순환적으로 락을 획득하는 행위 때문에 데드락이 발생한다.
+    ```sql
+    -- transaction1
+    start transaction;
+
+    -- lock_test Exclusive Lock 획득
+    update lock_test set col1 = 'value3' where col1 = 'value1';
+
+    do sleep(10);
+
+    -- trasaction2가 lock_test2에 대한 Exclusive Lock 획득했기 때문에 대기
+    update lock_test2 set col1 = 'value3' where col1 = 'value1';
+
+    commit;
+
+    -- transaction2
+    start transaction;
+
+    -- lock_test2 Exclusive Lock 획득
+    update lock_test2 set col1 = 'value3' where col1 = 'value1';
+
+    do sleep(10);
+
+    -- trasaction1이 lock_test에 대한 Exclusive Lock 획득했기 때문에 대기
+    update lock_test set col1 = 'value3' where col1 = 'value1';
+
+    commit;
+    ```
 
 ## 3. 데드락 발생 조건
 
