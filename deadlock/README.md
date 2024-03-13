@@ -218,9 +218,17 @@ public class DeadlockTest {
 
 ## 4. 데드락을 방지하는 방법
 
+#### 4.1. 하나의 프로세스나 스레드에 하나의 락만 사용한다.
+ - 애플리케이션과 데이터베이스에서 발생할 수 있는 데드락을 확인했는데 두 과정 모두 하나의 스레드가 두개 이상의 락을 사용하고 있기 때문에 발생하는 문제이다.
+ - 만약 두개이상의 락을 사용하게 된다면, 락의 순서를 잘 조정하여 데드락의 발생조건인 순환대기가 일어나지 않도록 해야한다.
+
+#### 4.2. 락에 타임아웃을 건다.
+- 일정시간이 지나도 락을 획득하지 못한다면 락을 해제하고 다른 프로세스나 스레드가 점유할 수 있도록 타임아웃을 건다. 이러한 기능은 기본적으로 애플리케이션이나 데이터베이스에서 제공해준다.
+- 타임아웃을 걸게된다면 데드락의 발생조건인 점유대기가 일어나지 않도록 방지할 수 있다.
+
+## 5. 데드락을 회복하는 방법
 
 
-
-> https://ksh-coding.tistory.com/121#google_vignette
-> https://hstory0208.tistory.com/entry/%EB%9D%BDLock%EC%9D%B4%EB%9E%80-Lock%EC%9D%98-%EC%A2%85%EB%A5%98%EC%99%80-%EA%B5%90%EC%B0%A9%EC%83%81%ED%83%9CDeadLock
+> https://ksh-coding.tistory.com/121#google_vignette <br/>
+> https://hstory0208.tistory.com/entry/%EB%9D%BDLock%EC%9D%B4%EB%9E%80-Lock%EC%9D%98-%EC%A2%85%EB%A5%98%EC%99%80-%EA%B5%90%EC%B0%A9%EC%83%81%ED%83%9CDeadLock <br/>
 > https://ko.wikipedia.org/wiki/%EA%B5%90%EC%B0%A9_%EC%83%81%ED%83%9C?source=post_page-----8100261a66c3--------------------------------
